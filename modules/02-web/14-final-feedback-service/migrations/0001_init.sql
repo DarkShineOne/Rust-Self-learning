@@ -1,0 +1,2 @@
+-- TODO: реализуйте схему users, refresh_tokens, feedback и attachments
+-- по контракту homework.md. Готовая схема намеренно отсутствует.

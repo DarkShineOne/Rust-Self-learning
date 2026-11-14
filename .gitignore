@@ -1,0 +1,7 @@
+/target/
+.idea/
+.env
+*.profraw
+*.log
+.DS_Store
+Thumbs.db

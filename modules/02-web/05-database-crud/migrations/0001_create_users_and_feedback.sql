@@ -1,0 +1,2 @@
+-- TODO: повторите схему из урока 04 самостоятельно.
+-- Нужны users, feedback, constraints и feedback_author_id_idx.

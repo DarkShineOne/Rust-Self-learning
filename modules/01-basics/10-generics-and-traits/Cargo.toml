@@ -1,0 +1,7 @@
+[package]
+name = "basics-10-traits"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
