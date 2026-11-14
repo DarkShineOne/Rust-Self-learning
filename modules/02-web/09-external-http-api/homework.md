@@ -17,9 +17,9 @@ pub async fn notify(&self, notification: &Notification)
 ## Retry и ошибки
 
 - Всего не более `max_retries + 1` попыток.
-- Retry разрешён для timeout/transport ошибок запроса и статусов 502/503/504. Не повторяйте ошибку декодирования JSON или Rejected.
+- Retry разрешён для ошибок timeout/transport при запросе и статусов 502/503/504. Не повторяйте ошибку декодирования JSON или Rejected.
 - После последнего retryable status → `ServerStatus(status)`. Любой другой неуспешный status → `UnexpectedStatus(status)` без retry.
-- Последний timeout → `Timeout`, другая последняя transport ошибка → `Transport(message)`.
+- Последний timeout → `Timeout`, другая transport-ошибка после последней попытки → `Transport(message)`.
 - Дополнительный backoff в задании не требуется. Idempotency-Key обязателен при каждой попытке.
 
 Не логируйте api_key и не выполняйте запросы к реальному интернет-API в тестах.

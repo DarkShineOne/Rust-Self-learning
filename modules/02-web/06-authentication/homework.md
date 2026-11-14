@@ -30,7 +30,7 @@ pub async fn logout(&self, refresh_token: &str);
 - Занятый email → `EmailAlreadyUsed`. Проверьте уникальность снова после дорогого hash, чтобы закрыть race внутри одного service. Не держите lock во время Argon2; используйте `spawn_blocking` для hash/verify в async методах.
 - Login: нормализованный email, неверный пароль или отсутствующий email → `InvalidCredentials`.
 - `issue_tokens`: JWT HS256 с claims из структуры, `sub = user.id`, `jti = UUID`, `iat = now`, `exp = now + access_ttl`. Refresh — случайная opaque строка достаточной длины; хранить только её hash, user_id, expiry и revoked=false.
-- `refresh`: неизвестный hash → `InvalidRefreshToken`; revoked → `RefreshReused`; `now >= expires_at` → `ExpiredToken`. При успехе старый revoked и выпускается новая пара с другим refresh token. Rotation и создание новой записи атомарны относительно одного service.
+- `refresh`: неизвестный hash → `InvalidRefreshToken`; revoked → `RefreshReused`; `now >= expires_at` → `ExpiredToken`. При успехе старый токен помечается revoked и выпускается новая пара с другим refresh token. Rotation и создание новой записи атомарны относительно одного service.
 - `logout`: помечает найденный token revoked; неизвестный/повторный logout не паникует и не возвращает ошибку. Refresh после logout → `RefreshReused`.
 - Не возвращайте plaintext refresh из структуры Inner и не логируйте секреты.
 

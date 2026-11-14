@@ -17,7 +17,7 @@ pub fn protected_app(state: AuthState) -> Router;
 - `validate_token`: только HS256, обязательные issuer/audience, валидный формат claims. Отключите автоматическую exp-проверку и используйте параметр now: `now >= exp` → `ExpiredToken`, `iat > now` → `InvalidToken`. Остальные ошибки decode → `InvalidToken`.
 - `bearer_token`: отсутствие Authorization → `MissingAuthorization`; не-ASCII, неправильная схема/число слов, пустой token → `InvalidAuthorization`. Схема Bearer case-insensitive, между схемой и token ровно один пробел, пробелы по краям всего значения недопустимы.
 - `current_user`: sub разбирается в `u64` и должен быть больше 0, иначе `InvalidSubject`.
-- `FromRequestParts`: последовательность headers → bearer → validate с `Utc::now().timestamp()` → current_user. Любая AuthError превращается в `(401 UNAUTHORIZED, Json(ErrorResponse { error: error.to_string() }))`.
+- `FromRequestParts`: последовательность headers → bearer → validate с `Utc::now().timestamp()` → current_user. Любой вариант AuthError превращается в `(401 UNAUTHORIZED, Json(ErrorResponse { error: error.to_string() }))`.
 - `profile`: копирует id/role в CurrentUserResponse.
 - `protected_app`: `GET /profile` и переданный AuthState.
 

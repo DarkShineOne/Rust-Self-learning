@@ -38,12 +38,12 @@ pub fn validate_access(&self, token: &str, now: i64)
 - Config: JWT secret не короче 32 байт, issuer/audience непустые, TTL положительные.
 - Email: trim + lowercase, один `@`, непустые local/domain и точка в domain после первого символа. Пароль: минимум 12 `.chars().count()`.
 - Registration создаёт только User. Занятый email → `Conflict("email is already registered")`. Некорректные значения → `Validation`.
-- Argon2id используется для пароля; дорогие операции в async переносятся в `spawn_blocking`. Login не раскрывает, отсутствует email или неверный пароль: `Unauthorized`.
+- Argon2id используется для пароля; дорогие операции в async переносятся в `spawn_blocking`. При login отсутствие email и неверный пароль приводят к одинаковой ошибке `Unauthorized`, не раскрывая причину.
 - Access JWT: HS256, claims из domain, `token_type=access`, `jti=UUID`, `iat=now`, `exp=now+access_ttl`.
 - Refresh: случайная opaque строка, в БД только SHA-256 lowercase hex. Login вставляет запись с `now+refresh_ttl`.
 - `refresh`: NotFound/revoked/expired → `Unauthorized`; при успехе атомарная rotation и новая пара. Повтор старого запрещён.
 - `logout`: идемпотентный revoke по hash; неизвестный token не вызывает ошибку.
-- `validate_access`: алгоритм HS256, issuer/audience, `token_type=access`, `now < exp`, `iat <= now`, положительный UUID sub. Любая ошибка → `Unauthorized`.
+- `validate_access`: алгоритм HS256, issuer/audience, `token_type=access`, `now < exp`, `iat <= now`, sub содержит валидный UUID. Любая ошибка → `Unauthorized`.
 
 ## 3. Repository и PostgreSQL
 
@@ -96,7 +96,7 @@ async fn delete(&self, key: &str) -> Result<(), AppError>;
 ```
 
 - Пустой файл → Validation; `max_bytes == 0` или превышение → PayloadTooLarge.
-- Имя trimmed непустое, до 255 chars, без `/`, `\\`, control. MIME: text/plain, image/png, image/jpeg, application/pdf.
+- Имя после trim непустое, его длина — до 255 символов; запрещены `/`, `\\`, control. MIME: text/plain, image/png, image/jpeg, application/pdf.
 - Key: `feedback/{feedback_id}/{attachment_id}/{trimmed_name}`. Download/delete принимают только key с prefix `feedback/`, без `..`, backslash/control.
 - Put использует ByteStream и возвращает metadata. Presign TTL 1–3600 секунд. Ошибки SDK → ServiceUnavailable/Timeout без секретов.
 
@@ -124,13 +124,13 @@ pub fn new(
 
 Все методы должны сохранить сигнатуры из `src/service.rs`.
 
-- `create_public`: только User; title/body trimmed непустые (до 100/2000 chars), rating 1–5. Create в БД, затем notify. Ошибка notify не откатывает feedback, а помещается в `notification_error` без секретов.
-- `get_public`: только User и только своё; чужое → NotFound. `list_public` принудительно author_id=actor.id, игнорируя query author_id, проверяет pagination.
+- `create_public`: только User; title/body после trim непустые (до 100/2000 символов), rating 1–5. Create в БД, затем notify. Ошибка notify не откатывает feedback, а помещается в `notification_error` без секретов.
+- `get_public`: только User и только своё; чужое → NotFound. `list_public` принудительно устанавливает author_id=actor.id, игнорируя query author_id, и проверяет pagination.
 - `update_public`: User/owner/New; validate Some-полей; вызвать scoped update. Ноль строк → NotFound. Status и author не меняются.
 - `delete_public`: User/owner/New. Получить metadata attachments, scoped delete, затем best-effort S3 delete каждого key. Вернуть DeleteOutcome с безопасными cleanup errors.
 - `list_private`/`get_private`: staff. `moderate_private`: staff и workflow, нарушение → Conflict. `delete_private`: только Admin и тот же cleanup outcome.
 - `upload_attachment_public`: User/owner/New, validate, UUID attachment, S3 put, save metadata. При ошибке save один compensating S3 delete, затем исходная ошибка.
-- `list_attachments_public` и `download_attachment_public`: User/owner; attachment должен относиться к feedback_id, иначе NotFound. Download TTL приходит из handler, 60 секунд.
+- `list_attachments_public` и `download_attachment_public`: User/owner; attachment должен относиться к feedback_id, иначе NotFound. Download получает TTL 60 секунд из handler.
 - `delete_attachment_public`: User/owner/New, attachment относится к feedback; удалить metadata, затем S3. Вернуть AttachmentDeleteOutcome с cleanup_error при сбое.
 - Private attachment list/download: staff; private delete: только Admin. Проверять соответствие attachment/feedback и возвращать тот же cleanup outcome.
 - Проверки роли/владельца выполняются до побочных эффектов. Не удерживайте DB lock во время S3/HTTP.
@@ -152,16 +152,16 @@ pub async fn run() -> Result<(), AppError>;
 
 Реализуйте handlers по сигнатурам `src/api.rs` и маршрутам `readme.md`. Handler только извлекает вход, вызывает auth/service и формирует статус/JSON. Create/upload — 201, logout — 204, download — DownloadResponse.
 
-`CurrentUser::from_request_parts`: Bearer схема case-insensitive, ровно один непустой token; validate_access с текущим Utc::now. Отсутствие/невалидность → 401 Problem Details.
+`CurrentUser::from_request_parts`: схема Bearer case-insensitive, ровно один непустой token; validate_access с текущим Utc::now. Отсутствие/невалидность → 401 Problem Details.
 
 - Status: Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, PayloadTooLarge 413, Timeout 504, ServiceUnavailable 503, Internal 500.
-- `ApiError::new`: `application/problem+json` поля, безопасный detail из AppError, request ID из headers или новый UUID, instance из аргумента.
+- `ApiError::new`: формат `application/problem+json`, безопасный detail из AppError, request ID из headers или новый UUID, instance из аргумента.
 - `public_router`: только public prefix, auth routes и public docs; `private_router`: private prefix, private docs только staff. Не монтируйте private handlers в public router.
 - `app`: merge routers, `/health/live`, `/health/ready`, request ID propagation, tracing, JSON/multipart limits и разумный CORS. Readiness не раскрывает ошибки.
-- `public_openapi`/`private_openapi`: вызвать соответствующий derive `OpenApi`; пути разных prefix не смешиваются. Реализуйте docs handlers.
+- `public_openapi`/`private_openapi`: вызвать соответствующий derive `OpenApi`; пути с разными prefix не смешиваются. Реализуйте docs handlers.
 - `run`: `AppConfig::from_env/validate`, tracing, PostgreSQL pool/migrations, AWS SDK custom endpoint/path-style, Reqwest notifier, services, TCP listener и graceful shutdown.
 
-`AppConfig::from_env` читает имена `.env.example`. Обязательные секреты не имеют defaults. Defaults: bind `127.0.0.1:3000`, DB connections 5, access TTL 900, refresh TTL 2592000, region us-east-1, path-style true, notification timeout 1000 ms/retries 2, attachment limit 5242880. `validate` отклоняет пустые/некорректные значения без печати секретов.
+`AppConfig::from_env` читает имена `.env.example`. Обязательные секреты не имеют значений по умолчанию. Значения по умолчанию: bind `127.0.0.1:3000`, DB connections 5, access TTL 900, refresh TTL 2592000, region us-east-1, path-style true, notification timeout 1000 ms/retries 2, attachment limit 5242880. `validate` отклоняет пустые/некорректные значения без печати секретов.
 
 ## 8. Проверка и критерии готовности
 
@@ -175,7 +175,7 @@ cargo clippy -p web-14-final-feedback --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-- `database` требует DATABASE_URL и право создания тестовых БД.
+- `database` требует DATABASE_URL и права на создание тестовых БД.
 - `s3_integration` требует S3_TEST_ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY и заранее созданный test bucket.
 - HTTP integration использует Wiremock и не требует внешней сети.
 - Acceptance tests используют mocks и не требуют PostgreSQL/S3.

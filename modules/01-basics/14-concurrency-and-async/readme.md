@@ -16,7 +16,7 @@ Concurrency — организация нескольких продолжающ
 
 ## Future и async/await
 
-`async fn` возвращает тип, реализующий `Future`. Тело не выполняется, пока future не начнут поллить. `.await` регистрирует продолжение и позволяет runtime переключиться на другую работу, если операция не готова.
+`async fn` возвращает тип, реализующий `Future`. Тело не выполняется, пока executor не начнёт опрашивать (poll) future. `.await` регистрирует продолжение и позволяет runtime переключиться на другую работу, если операция не готова.
 
 ```rust
 async fn read_rating() -> u8 {
@@ -27,7 +27,7 @@ async fn read_rating() -> u8 {
 
 `async` не означает автоматический новый поток. Обычная async fn выполняется в задаче вызывающего кода. `tokio::spawn` создаёт отдельную task, требуя обычно `Send + 'static` для future.
 
-Runtime Tokio управляет задачами и драйверами I/O/timers. `#[tokio::main]` создаёт runtime для бинарника, `#[tokio::test]` — для async test. Нельзя вызывать блокирующий `std::thread::sleep` вместо async `tokio::time::sleep` в рабочем async handler без необходимости.
+Runtime Tokio управляет задачами и драйверами I/O/timers. `#[tokio::main]` создаёт runtime для бинарника, `#[tokio::test]` — для async test. Не вызывайте блокирующий `std::thread::sleep` вместо асинхронного `tokio::time::sleep` в рабочем async handler.
 
 ## Tokio tasks и JoinSet
 

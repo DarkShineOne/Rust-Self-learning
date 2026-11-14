@@ -31,7 +31,7 @@ pub fn app() -> Router;
 
 ## Request ID и routes
 
-- `request_id`: `x-request-id`, если ASCII и непустой после trim; вернуть исходное значение без trim. Иначе `Uuid::new_v4().to_string()`.
+- `request_id`: использовать `x-request-id`, если его значение ASCII и непустое после trim; вернуть исходное значение без trim. Иначе `Uuid::new_v4().to_string()`.
 - `internal_error`: Problem Internal с вычисленным request_id и instance `/error`.
 - `echo`: вернуть входной String.
 - `app`: `GET /error`, `POST /limited`, `DefaultBodyLimit::max(16)`, TraceLayer, SetRequestIdLayer с MakeRequestUuid и PropagateRequestIdLayer для `x-request-id`.

@@ -27,7 +27,7 @@ pub async fn create_user_and_feedback(
 - `list`: сначала проверить `1 <= limit <= 100` и `offset >= 0`, иначе `InvalidPagination`. Фильтры author/status необязательны. ORDER BY id ASC, затем LIMIT/OFFSET. Пустой результат — пустой Vec.
 - `update`: меняет только `Some`, updated_at = NOW() при выполненном UPDATE, возвращает изменённую строку. Отсутствие id → `NotFound`. Пустой update может просто вернуть `get(id)`.
 - `delete`: удаляет и возвращает строку или `NotFound`.
-- `create_user_and_feedback`: в одной транзакции создаёт users с ролью `user`, затем feedback со статусом `new`. При любой ошибке обе операции откатываются.
+- `create_user_and_feedback`: в одной транзакции создаёт пользователя с ролью `user`, затем feedback со статусом `new`. При любой ошибке обе операции откатываются.
 - Все значения, включая фильтры и pagination, передаются bind-параметрами. SQL fragments динамического запроса должны быть фиксированными.
 - `sqlx::Error` распространяется как `RepositoryError::Database`; не заменяйте ошибку соединения на NotFound.
 

@@ -15,7 +15,7 @@ pub fn app(state: AppState) -> Router;
 
 ## Контракт
 
-- Create: title trim непустой, rating 1–5. Ошибки `EmptyTitle`/`InvalidRating` до repository.
+- Create: title после trim непустой, rating 1–5. Ошибки `EmptyTitle`/`InvalidRating` до repository.
 - Успешный repository.insert вызывается ровно один раз с нормализованным title. После него Notifier вызывается ровно один раз с id/title созданной записи.
 - Repository error возвращается без notify.
 - Ошибка Notifier не откатывает запись: метод возвращает `Ok(CreationOutcome { feedback, notification_error: Some(message) })`. При успехе notification_error = None.

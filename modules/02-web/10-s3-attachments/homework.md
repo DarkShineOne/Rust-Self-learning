@@ -12,7 +12,7 @@ pub fn S3Storage::object_key(feedback_id: Uuid, attachment_id: Uuid, file_name: 
 
 - Порядок validate: пустой bytes → `EmptyFile`; `max_bytes == 0` или `bytes.len() > max_bytes` → `FileTooLarge`; невалидное имя → `InvalidFileName`; MIME вне allowlist → `UnsupportedContentType`.
 - Разрешены `text/plain`, `image/png`, `image/jpeg`, `application/pdf`.
-- Имя после trim непустое, не более 255 `.chars().count()`, без `/`, `\\` и control characters. Сохраняется trimmed.
+- Длина имени после trim — от 1 до 255 символов `.chars().count()`; запрещены `/`, `\\` и control characters. Сохраняется trimmed.
 - `new`: trimmed bucket непустой, иначе `InvalidBucket`.
 - Key: `feedback/{feedback_id}/{attachment_id}/{trimmed_file_name}`.
 - Для download/delete key должен начинаться с `feedback/`, не содержать `..`, `\\` и control characters, иначе `InvalidKey`.
@@ -54,7 +54,7 @@ cargo clippy -p web-10-s3 --all-targets -- -D warnings
 
 ## Настоящий S3 integration test
 
-Установите open-source S3 самостоятельно, создайте bucket и задайте:
+Самостоятельно установите open-source S3-совместимое хранилище, создайте bucket и задайте:
 
 ```bash
 export S3_TEST_ENDPOINT="http://127.0.0.1:9000"
