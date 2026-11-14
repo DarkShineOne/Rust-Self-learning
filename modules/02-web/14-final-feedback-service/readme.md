@@ -18,7 +18,7 @@
 - `config.rs` — конфигурация без секретов в Debug.
 - `lib.rs` — сборка зависимостей и запуск.
 
-Public/private здесь группы HTTP endpoints, а не видимость Rust. Публичные методы заготовок нужны тестам и не означают анонимный HTTP доступ.
+Public/private здесь обозначают группы HTTP endpoints, а не видимость Rust. Публичные методы заготовок нужны тестам и не означают анонимный HTTP-доступ.
 
 ## Public API
 
@@ -88,34 +88,34 @@ GET    /openapi.json
 - Пароль хранится только как Argon2id PHC hash.
 - Access — короткоживущий JWT HS256 с `sub`, `role`, `iss`, `aud`, `exp`, `iat`, `jti`, `token_type=access`.
 - Refresh — случайная opaque строка; в БД только SHA-256 hash.
-- Refresh rotation атомарна в PostgreSQL transaction: заблокировать старую запись, проверить revoked/expiry, отозвать, вставить новую.
-- Повтор revoked → 401 и трактуется как reuse. Logout идемпотентен.
+- Ротация refresh token атомарна в PostgreSQL transaction: заблокировать старую запись, проверить revoked/expiry, отозвать, вставить новую.
+- Повторное использование revoked token → 401 и трактуется как reuse. Logout идемпотентен.
 - Password hash, access/refresh tokens, JWT secret и credentials не логируются.
 
 ## PostgreSQL
 
-Нужны таблицы `users`, `refresh_tokens`, `feedback`, `attachments`. Все IDs — UUID. Feedback хранит автора, title/body/rating/category/status/timestamps. Attachments хранят metadata и S3 key, но не содержимое файла.
+Нужны таблицы `users`, `refresh_tokens`, `feedback`, `attachments`. Все идентификаторы — UUID. Feedback хранит автора, title/body/rating/category/status/timestamps. Attachments хранят metadata и S3 key, но не содержимое файла.
 
-Миграции должны содержать PK, FK, unique email, checks rating/status/role/category, индексы списков и refresh hash. Public scoped update/delete используют `WHERE id/author_id/status`, чтобы не потерять защиту при гонке. Refresh rotation и admin delete используют транзакции.
+Миграции должны содержать PK, FK, unique email, checks rating/status/role/category, индексы для выборок и по refresh hash. Public scoped update/delete используют `WHERE id/author_id/status`, чтобы не потерять защиту при гонке. Ротация refresh token и admin delete используют транзакции.
 
 ## S3
 
 Разработчик самостоятельно выбирает и устанавливает open-source S3-совместимый сервер: MinIO, SeaweedFS, Ceph RGW или другой с нужным API. Создайте development/test buckets и ограниченные credentials. S3 намеренно отсутствует в Compose.
 
-Загрузка ограничена по размеру и MIME allowlist. Object key генерируется сервером. Скачивание использует presigned URL TTL 60 секунд. Bucket не публичный, URL не логируется.
+Загрузка ограничена по размеру и MIME allowlist. Object key генерируется сервером. Скачивание использует presigned URL TTL 60 секунд. Bucket не является публичным, URL не логируется.
 
 S3 и PostgreSQL не образуют атомарную транзакцию. Upload требует compensating delete при ошибке metadata. Delete возвращает cleanup outcome. Ревью проверяет поведение при сбое и документированную reconciliation-стратегию.
 
 ## Внешний HTTP API
 
-Новое обращение вызывает `POST {NOTIFICATION_URL}/v1/notifications` с Bearer и `Idempotency-Key: feedback-{id}`. Client имеет timeout и retry только timeout/transport и 502/503/504, не более `max_retries + 1` попыток.
+Новое обращение вызывает `POST {NOTIFICATION_URL}/v1/notifications` с Bearer и `Idempotency-Key: feedback-{id}`. Client имеет timeout, а retry выполняется только для timeout/transport и 502/503/504, не более `max_retries + 1` попыток.
 
 Обращение остаётся созданным при сбое уведомления. `CreationOutcome.notification_error` содержит безопасную причину. Не выполняйте внешний вызов внутри DB transaction.
 
 ## HTTP и production-контракты
 
 - Успешный create: 201, login/refresh/read/update/delete: 200, logout: 204.
-- Validation: 400 или 422 согласованно по слою; malformed auth: 401; forbidden: 403; hidden/not found: 404; conflict: 409; large file: 413; upstream timeout: 504; unavailable dependency: 503; internal: 500.
+- Validation: 400 или 422 — единообразно для каждого слоя; malformed auth: 401; forbidden: 403; hidden/not found: 404; conflict: 409; large file: 413; upstream timeout: 504; unavailable dependency: 503; internal: 500.
 - Все ошибки — `application/problem+json` с type/title/status/detail/instance/request_id.
 - Request ID присутствует в логах, теле ошибки и response headers.
 - Readiness проверяет PostgreSQL и обязательную конфигурацию; liveness не зависит от временного сбоя внешних API.
@@ -123,17 +123,17 @@ S3 и PostgreSQL не образуют атомарную транзакцию. 
 
 ## Тесты
 
-`tests/common/mod.rs` содержит рабочие mocks, не production-решение. Acceptance tests проверяют public/private authorization, CRUD, refresh rotation, notifications и S3 consistency. `database.rs` требует PostgreSQL, `s3_integration.rs` запускается явно с настоящим bucket, `http_integration.rs` использует Wiremock.
+`tests/common/mod.rs` содержит рабочие mocks, а не production-решение. Acceptance tests проверяют public/private authorization, CRUD, refresh rotation, notifications и S3 consistency. `database.rs` требует PostgreSQL, `s3_integration.rs` запускается явно с настоящим bucket, `http_integration.rs` использует Wiremock.
 
 До решения ожидаемы падения на `todo!()`. Сначала добейтесь компиляции, затем проходите тесты по слоям: domain → auth/service mocks → routes → PostgreSQL/S3/HTTP → E2E.
 
 ## Критерии ревью
 
-- нет готового обхода через глобальное состояние или доверенные `X-Role` headers;
+- нет обхода через глобальное состояние или доверенные `X-Role` headers;
 - private API защищён даже без Nginx;
 - нет plaintext паролей/refresh tokens и секретов в логах;
 - SQL параметризован, миграции и транзакции корректны;
-- файлы ограничены до буферизации, key безопасен;
+- размер файлов ограничен до буферизации, key безопасен;
 - согласованность S3/DB и notification partial success явны;
 - public/private OpenAPI не смешаны;
 - публичные сигнатуры и тесты сохранены, Clippy/Rustfmt проходят.

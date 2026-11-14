@@ -38,7 +38,7 @@ pub fn status_code(error: &ServiceError) -> StatusCode;
 
 ## Handlers и router
 
-Реализуйте пять handlers из заготовки: они только вызывают соответствующий service метод и преобразуют `ServiceError` через `ApiError::from`. Create возвращает 201, остальные — `Json` результата со статусом 200 по умолчанию.
+Реализуйте пять handlers из заготовки: они только вызывают соответствующий метод service и преобразуют `ServiceError` через `ApiError::from`. Create возвращает 201, остальные — `Json` результата со статусом 200 по умолчанию.
 
 ```rust
 pub fn app(state: AppState) -> Router;

@@ -22,7 +22,7 @@ pub fn private_app(state: AppState) -> Router;
 - `authorize_view`: User может читать только своё, чужое → `NotFound`; Moderator/Admin читают любое.
 - `authorize_user_update`: сначала require_user, затем чужой id → `NotFound`, статус не New → `Forbidden`.
 - `authorize_moderation`: require_moderator, затем workflow: same разрешён, New→InReview/Rejected, InReview→Resolved/Rejected; остальное → `InvalidTransition`.
-- В handlers path id, не совпавший с записью state, → `NotFound`. Public handler сначала require_user, private — require_moderator, затем id и authorize_view.
+- В handlers несовпадение path id с id записи state → `NotFound`. Public handler сначала require_user, private — require_moderator, затем id и authorize_view.
 - `public_app` и `private_app` регистрируют `GET /feedback/{id}` и передают state. Extension actor в тестах моделирует JWT middleware.
 - Готовый `ApiError` отображает NotFound→404, Forbidden→403, InvalidTransition→409.
 

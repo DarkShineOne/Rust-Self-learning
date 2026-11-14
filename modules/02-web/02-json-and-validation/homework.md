@@ -22,7 +22,7 @@ pub fn app() -> Router;
 - Body после trim: 1–2000 символов. Пустой → `EmptyBody`, длинный → `BodyTooLong`.
 - Rating: 1–5, иначе `InvalidRating`.
 - Create проверяет поля в перечисленном порядке и сохраняет trimmed title/body и исходные rating/category.
-- Update без любых `Some` → `NoChanges`. Иначе проверяются только присутствующие поля в том же порядке; `None` остаётся `None`, `Some` строки нормализуются trim.
+- Update без единого `Some` → `NoChanges`. Иначе проверяются только присутствующие поля в том же порядке; `None` остаётся `None`, `Some` строки нормализуются trim.
 - `create_feedback`: успех → `(201 CREATED, Json(validated))`, ошибка → `(422 UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: error.to_string() }))`.
 - `app`: `POST /feedback` на create handler.
 

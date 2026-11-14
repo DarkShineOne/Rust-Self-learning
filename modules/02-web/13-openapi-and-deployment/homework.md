@@ -18,8 +18,8 @@ pub fn AppConfig::validate(&self) -> Result<(), ConfigError>;
 
 ## Config validation
 
-- `database_url`: непустой и начинается с `postgres://` или `postgresql://`; ошибка `InvalidUrl("database_url")`, пустое — `Empty("database_url")`.
-- `s3_endpoint` и `notification_url`: непустой `http://` или `https://` с непустым host после схемы; соответствующие Empty/InvalidUrl с именем поля.
+- `database_url`: непустой и начинается с `postgres://` или `postgresql://`; ошибка `InvalidUrl("database_url")`, пустое значение — `Empty("database_url")`.
+- `s3_endpoint` и `notification_url`: каждый должен быть непустым `http://` или `https://` URL с непустым host после схемы; соответствующие Empty/InvalidUrl с именем поля.
 - `s3_bucket`, `s3_access_key_id`, `s3_secret_access_key`: непустые после trim, иначе Empty с именем поля.
 - `jwt_secret`: минимум 32 байта, иначе `WeakJwtSecret`.
 - Проверка в порядке полей структуры, затем notification_url. Не печатайте значения в ошибках.

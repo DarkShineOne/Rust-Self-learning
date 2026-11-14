@@ -11,7 +11,7 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError>;
 ```
 
 - `new`: trimmed URL непустой, max_connections больше 0; хранить trimmed URL. Ошибки `EmptyDatabaseUrl`/`InvalidMaxConnections`.
-- `from_env`: отсутствующий `DATABASE_URL` → `MissingDatabaseUrl`; `DB_MAX_CONNECTIONS` по умолчанию `"5"`, ошибка parse → `InvalidMaxConnectionsText(исходное_значение)`. Далее использовать `new`.
+- `from_env`: отсутствующий `DATABASE_URL` → `MissingDatabaseUrl`; `DB_MAX_CONNECTIONS` по умолчанию `"5"`, ошибка разбора → `InvalidMaxConnectionsText(исходное_значение)`. Далее использовать `new`.
 - `connect`: `PgPoolOptions` с заданным max_connections и `connect(&config.url)`.
 - `healthcheck`: `SELECT 1::BIGINT`, `fetch_one`, результат 1 при доступной БД.
 - `migrate`: применить `sqlx::migrate!()` к pool.
